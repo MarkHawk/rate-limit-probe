@@ -1,15 +1,15 @@
 # rate-limit-probe
 
-Explain, in plain English, why an integration keeps getting
-`HTTP 429 Too Many Requests`. rate-limit-probe sends a small, slow, capped
-sequence of requests to an API you own or are authorised to test, and reports
-when the 429s start, the limit and window it observed, how the limit resets,
-whether the rate-limit headers agree with what actually happened, and whether
-a client that honours `Retry-After` gets back in. It ends with a likely cause
-and a next step for the customer.
+**rate-limit-probe explains why an integration keeps getting `HTTP 429
+Too Many Requests`.** It sends a small, slow, capped sequence of
+requests to an API you own or are authorised to test, then reports when
+the 429s start, the limit and window it observed, how the limit resets,
+whether the rate-limit headers match what actually happened, and
+whether a client that honours `Retry-After` gets back in. It ends with
+the likely cause and a next step for the customer.
 
-It is a diagnostic, not a load or stress tool: one connection, at most 10
-requests a second, at most 500 requests a run, localhost only unless you say
+It's a diagnostic, not a load or stress tool: one connection, at most
+10 requests a second and 500 per run, localhost only unless you say
 otherwise, and it stops at the first sign of a block.
 
 ## Try it in 1 minute
