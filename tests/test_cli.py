@@ -111,3 +111,32 @@ def test_503_report_wording(server, clock):
     code, out, _ = run([server.url("/s/overload-503")], clock)
     assert code == 1
     assert "signalled overload or rate limiting with 503 instead of 429" in out
+
+
+def test_json(server, clock):
+    import json
+    code, out, _ = run([server.url("/s/penalty?key=abc"), "--json"], clock)
+    data = json.loads(out)
+    assert code == 1 == data["summary"]["exit_code"]
+    assert data["likely_cause"]["pattern"] == "early-retries-extend"
+    assert {f["id"]: f["status"] for f in data["findings"]}["behaviour.early_retry"] == "FAIL"
+    assert data["timeline"][5] == {**data["timeline"][5], "type": "request", "n": 6, "status": 429, "retry_after": 10}
+    assert data["target"]["url"].endswith("/s/penalty?key=<hidden>") and "abc" not in out
+    assert data["limits"] == {"max_requests": 100, "rate": 10, "max_wait": 60}
+
+
+def test_json_never_contains_header_values(server, clock):
+    code, out, _ = run([server.url("/s/fixed-seconds"), "--json", "--header", "X-Api-Key: zz-secret-zz"], clock)
+    assert "zz-secret-zz" not in out
+
+
+def test_redact_masks_host_and_path(clock, tmp_path):
+    tls = make_ca_and_server(tmp_path)
+    with TestServer(scenario_endpoints(), clock=clock, ssl_context=server_context(tls)) as server:
+        url = server.url("/s/fixed-seconds", host="localhost")
+        code, out, _ = run([url, "--redact"], clock)
+        assert "localhost" not in out and "/s/fixed-seconds" not in out
+        assert "https://<host>:" in out and "/<path>" in out and "Redacted:" in out
+        # an error message that names the host is masked too
+        code, out, _ = run([url, "--redact", "--json"], clock)
+        assert "localhost" not in out and "<host>" in out

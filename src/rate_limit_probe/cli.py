@@ -10,8 +10,8 @@ from rate_limit_probe import __version__, safety
 from rate_limit_probe.analyse import analyse
 from rate_limit_probe.clock import RealClock
 from rate_limit_probe.probe import run_probe
-from rate_limit_probe.render import limits_line, render_text, use_colour
-from rate_limit_probe.redact import display_url
+from rate_limit_probe.redact import display_url, redact_text
+from rate_limit_probe.render import limits_line, render_json, render_text, use_colour
 from rate_limit_probe.transport import METHODS, Transport
 
 
@@ -37,6 +37,9 @@ def build_parser():
     p.add_argument("--header", action="append", default=[], metavar="'NAME: VALUE'",
                    help="send this header on every request, e.g. a test key; never shown in the report")
     p.add_argument("--cacert", metavar="FILE", help="trust this PEM CA certificate for https:// (a private CA)")
+    p.add_argument("--json", action="store_true", help="print the report as JSON")
+    p.add_argument("--redact", action="store_true",
+                   help="mask the host and path in the report, so it can go into a ticket")
     p.add_argument("--i-am-authorised", action="store_true",
                    help="allow a host other than localhost: you own the API or are authorised to test it")
     p.add_argument("--version", action="version", version=f"rate-limit-probe {__version__}")
@@ -69,7 +72,15 @@ def probe_command(argv, clock=None, stdout=None, stderr=None):
 
     result = run_probe(transport, budget, clock, target, limits, args.method)
     report = analyse(result, notes=limits.notes)
-    stdout.write(render_text(report, colour=use_colour(stdout)))
+    if args.json:
+        text = render_json(report)
+    else:
+        text = render_text(report, colour=use_colour(stdout) and not args.redact)
+    if args.redact:
+        text = redact_text(text, target)
+        if not args.json:
+            text = text.replace("\n\n== Timeline ==", "\nRedacted: host and path are masked\n\n== Timeline ==", 1)
+    stdout.write(text)
     return report.exit_code
 
 

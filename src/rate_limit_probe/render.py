@@ -1,11 +1,12 @@
 """Render a Report as readable text."""
 
+import json
 import os
 import textwrap
 
 from rate_limit_probe import __version__
 from rate_limit_probe.findings import Status
-from rate_limit_probe.probe import Observation
+from rate_limit_probe.probe import Observation, Wait
 from rate_limit_probe.redact import display_url
 from rate_limit_probe.timefmt import plural, secs
 
@@ -147,3 +148,60 @@ def render_text(report, colour=False):
     out += likely_cause_lines(report)
     out += ["", verdict_line(report)]
     return "\n".join(out) + "\n"
+
+
+def _json_value(v):
+    if isinstance(v, Status):
+        return v.value
+    if isinstance(v, dict):
+        return {str(k): _json_value(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_json_value(x) for x in v]
+    if isinstance(v, float):
+        return round(v, 3)
+    if v is None or isinstance(v, (str, int, bool)):
+        return v
+    return str(v)
+
+
+def _event(e):
+    if isinstance(e, Wait):
+        return {"type": "wait", "at": e.at, "seconds": e.seconds, "source": e.source, "purpose": e.purpose}
+    return {
+        "type": "request", "n": e.n, "phase": e.phase, "at": e.at, "status": e.status,
+        "rate_headers": [[k, v] for k, v in e.info.raw],
+        "retry_after": e.info.retry_after, "limit": e.info.limit, "remaining": e.info.remaining,
+        "reset": e.info.reset, "error": e.error, "error_kind": e.error_kind,
+    }
+
+
+def report_dict(report):
+    r = report.result
+    cause = report.likely_cause
+    return _json_value({
+        "tool": "rate-limit-probe",
+        "version": __version__,
+        "target": {"url": display_url(r.target), "local": r.target.is_local, "method": r.method},
+        "limits": {"max_requests": r.limits.max_requests, "rate": r.limits.rate, "max_wait": r.limits.max_wait},
+        "notes": report.notes,
+        "sent": len(r.observations),
+        "duration": r.duration,
+        "stop": None if r.stop is None else {
+            "kind": r.stop.kind, "detail": r.stop.detail, "request": r.stop.request, "retry_after": r.stop.retry_after},
+        "timeline": [_event(e) for e in r.events],
+        "findings": [
+            {"id": f.check_id, "status": f.status, "title": f.title, "summary": f.summary, "details": f.details}
+            for f in report.findings
+        ],
+        "likely_cause": None if cause is None else {
+            "pattern": cause.pattern, "label": cause.label, "summary": cause.summary, "next_step": cause.next_step},
+        "summary": {
+            **{s.value.lower(): report.count(s) for s in Status},
+            "verdict": verdict_line(report).removeprefix("Verdict: "),
+            "exit_code": report.exit_code,
+        },
+    })
+
+
+def render_json(report):
+    return json.dumps(report_dict(report), indent=2, ensure_ascii=False) + "\n"

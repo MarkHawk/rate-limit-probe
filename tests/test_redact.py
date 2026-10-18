@@ -11,3 +11,10 @@ def test_mask_query():
 
 def test_display_url():
     assert display_url(parse_target("http://localhost:8429/a?k=v")) == "http://localhost:8429/a?k=<hidden>"
+
+
+def test_redact_text_leaves_other_text_alone():
+    from rate_limit_probe.redact import redact_text
+    t = parse_target("http://api.example.com/s?k=v", authorised=True)
+    text = "Target: http://api.example.com/s?k=<hidden>\nLimits: 10/s or slower\nerror: not valid for 'api.example.com'"
+    assert redact_text(text, t) == "Target: http://<host>/<path>\nLimits: 10/s or slower\nerror: not valid for '<host>'"
