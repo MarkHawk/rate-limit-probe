@@ -50,3 +50,10 @@ def test_check_reports_kinds_not_values(tmp_path, capsys):
     err = capsys.readouterr().err
     assert "private IPv4 address" in err
     assert PRIVATE_IP not in err
+
+
+def test_compiled_caches_are_skipped(tmp_path):
+    cache = tmp_path / "__pycache__"
+    cache.mkdir()
+    (cache / "x.pyc").write_text(PRIVATE_IP)
+    assert sanitise.check_paths([tmp_path], personal=[]) == []

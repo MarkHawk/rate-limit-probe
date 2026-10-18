@@ -103,7 +103,9 @@ def check_paths(paths, personal=None):
     problems = []
     for root in paths:
         root = pathlib.Path(root)
-        files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
+        files = [root] if root.is_file() else sorted(
+            p for p in root.rglob("*") if p.is_file() and "__pycache__" not in p.parts  # compiled caches, never committed
+        )
         for f in files:
             text = f.read_bytes().decode("utf-8", errors="replace")
             kinds = set()
