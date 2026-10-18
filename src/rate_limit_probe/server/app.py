@@ -13,6 +13,7 @@ BIND_ADDRESS = "127.0.0.1"
 def _handler(server_state):
     class Handler(http.server.BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
+        disable_nagle_algorithm = True  # headers and body go out promptly, not 40 ms apart
         server_version = "rate-limit-probe-test-server"
         sys_version = ""
 
