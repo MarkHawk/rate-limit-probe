@@ -227,7 +227,8 @@ def _retry_after(f):
     if f.hint_source == "Retry-After" and _honour_failed(f):
         return Finding("headers.retry_after", Status.FAIL, "Retry-After", _honour_failed_text(f, "Retry-After"),
                        {**details, "too_short": True, "said": f.hint, "actual": f.recovery_after})
-    if f.early is not None and f.early.ok and f.hint_source == "Retry-After":
+    if (f.early is not None and f.early.ok and f.hint_source == "Retry-After"
+            and f.early_expected is not None and f.early_expected > TOLERANCE):
         return Finding("headers.retry_after", Status.WARN, "Retry-After",
                        f"{sent}, {form}, but it is longer than needed: it said {secs(f.hint)} and a request "
                        f"sent after {secs(f.early_delay)} was accepted.", {**details, "too_long": True})
@@ -247,18 +248,21 @@ def _quota(result, f):
     problems, good = [], []
     seq = list(f.remaining_seq)
     if seq:
-        counts_down = all(b == a - 1 for a, b in zip(seq, seq[1:]))
-        if not counts_down:
+        # Remaining may hold or rise between requests (a bucket refilling), but
+        # it must move, and it must reach 0 before a refusal.
+        stuck = len(seq) >= 3 and len(set(seq)) == 1 and seq[0] > 0
+        if stuck:
             problems.append("Remaining did not count down (it said " + ", ".join(map(str, seq)) + ")")
         if f.first_429 is not None and seq[-1] > 0:
             who = "it" if problems else "Remaining"
             problems.append(f"{who} still said {seq[-1]} left when the next request was refused")
-        if counts_down and (f.first_429 is None or seq[-1] == 0):
+        if not problems:
             good.append("Remaining counted down" + (" to 0" if f.first_429 is not None else ""))
     if f.policy_limit is not None and f.first_429 is not None:
         fresh = seq and seq[0] == f.policy_limit - 1
-        if fresh and f.policy_limit != f.burst:
-            problems.append(f"Limit said {f.policy_limit} but {f.burst} were accepted")
+        # More than the limit is fine (capacity refilling during the burst); fewer is not.
+        if fresh and f.burst < f.policy_limit:
+            problems.append(f"Limit said {f.policy_limit} but only {f.burst} were accepted")
         elif f.policy_limit == f.burst:
             good.append("Limit matched what happened")
     if f.first_429 is not None:

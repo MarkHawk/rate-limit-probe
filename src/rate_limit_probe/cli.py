@@ -2,6 +2,7 @@
 
     rate-limit-probe <url> [options]      probe a URL (localhost unless --i-am-authorised)
     rate-limit-probe serve [options]      run the bundled test server on 127.0.0.1
+    rate-limit-probe demo [name]          probe every bundled behaviour, one line each
 """
 
 import argparse
@@ -90,4 +91,7 @@ def main(argv=None, **kwargs):
     if argv and argv[0] == "serve":
         from rate_limit_probe.serve import serve_command
         return serve_command(argv[1:], **{k: v for k, v in kwargs.items() if k in ("stdout", "stderr", "ready")})
+    if argv and argv[0] == "demo":
+        from rate_limit_probe.demo import demo_command
+        return demo_command(argv[1:], **{k: v for k, v in kwargs.items() if k in ("clock", "stdout", "stderr")})
     return probe_command(argv, **kwargs)

@@ -128,3 +128,13 @@ def test_window_quoted_rounded_down_on_a_slightly_late_clock():
         f = analyse(probe_scenario(name, clock=LateClock())).finding("limit.observed")
         assert f.details["window"] > 10.5 and f.details["window_nice"] == 10, name
         assert "5 per 10 s" in f.summary
+
+
+def test_a_fast_refilling_bucket_is_not_a_header_fault():
+    """Remaining 0 then another acceptance, and more than Limit accepted, are
+    what a token bucket does when it refills during the burst."""
+    from rate_limit_probe.server.scenarios import BY_NAME, scaled
+    r = analyse(probe_scenario(scaled(BY_NAME["bucket-ietf"], 2)))
+    assert r.finding("headers.quota").status == Status.PASS
+    assert r.finding("headers.retry_after").status == Status.PASS
+    assert r.exit_code == 0
