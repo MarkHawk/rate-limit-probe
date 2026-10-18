@@ -1,15 +1,23 @@
 """Seconds and counts, written for people."""
 
+import math
+
+
+def _whole(value):
+    """Round half down, with a little slack for float noise, so 10.5 s measured
+    (a 10 s window seen 0.5 s late) always reads as 10 s, never sometimes 11."""
+    return math.floor(value + 0.5 - 1e-6)
+
 
 def secs(value):
     """2 s, 2.5 s, 12 s, 3 min 5 s."""
     if value is None:
         return "?"
     if value >= 120:
-        m, s = divmod(round(value), 60)
+        m, s = divmod(_whole(value), 60)
         return f"{m} min {s} s" if s else f"{m} min"
     if value >= 10 or abs(value - round(value)) < 0.05:
-        return f"{round(value)} s"
+        return f"{_whole(value)} s"
     return f"{value:.1f} s"
 
 
