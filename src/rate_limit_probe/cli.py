@@ -1,6 +1,7 @@
 """Command line entry point.
 
     rate-limit-probe <url> [options]      probe a URL (localhost unless --i-am-authorised)
+    rate-limit-probe serve [options]      run the bundled test server on 127.0.0.1
 """
 
 import argparse
@@ -86,4 +87,7 @@ def probe_command(argv, clock=None, stdout=None, stderr=None):
 
 def main(argv=None, **kwargs):
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] == "serve":
+        from rate_limit_probe.serve import serve_command
+        return serve_command(argv[1:], **{k: v for k, v in kwargs.items() if k in ("stdout", "stderr", "ready")})
     return probe_command(argv, **kwargs)
