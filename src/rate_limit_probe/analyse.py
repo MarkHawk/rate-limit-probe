@@ -11,6 +11,7 @@ with" and stop there.
 
 import dataclasses
 
+from rate_limit_probe.causes import likely_cause
 from rate_limit_probe.findings import Finding, Report, Status
 from rate_limit_probe.timefmt import join, ordinal, plural, secs
 
@@ -385,4 +386,6 @@ def analyse(result, notes=()):
         _reset(facts),
         _stopped(result, facts),
     ]
-    return Report(result, facts, [x for x in findings if x is not None], notes=list(notes))
+    report = Report(result, facts, [x for x in findings if x is not None], notes=list(notes))
+    report.likely_cause = likely_cause(report)
+    return report
