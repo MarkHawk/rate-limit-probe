@@ -1,0 +1,2 @@
+# Runtime dependencies: none. The tool uses the Python standard library only
+# (http.client, http.server, ssl), so there is nothing extra to vet or pin.

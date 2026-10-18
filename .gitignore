@@ -1,0 +1,24 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.personal-patterns
+
+# Keys and certificates: never committed. The HTTPS tests build a throwaway
+# CA in a temporary directory at run time.
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
