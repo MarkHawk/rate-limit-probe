@@ -10,6 +10,7 @@ with" and stop there.
 """
 
 import dataclasses
+import math
 
 from rate_limit_probe.causes import likely_cause
 from rate_limit_probe.findings import Finding, Report, Status
@@ -154,7 +155,10 @@ def _observed(f):
                        f"{plural(f.burst, 'request')}, then refused; the probe did not get back in, so the "
                        "window is unknown.", details)
     window, source = _window_estimate(f)
-    details.update(window=window, window_source=source, refill_accepted=f.refill_accepted)
+    # A measured reset is an upper bound: it is seen up to one request late, and
+    # Retry-After rounds up. So the window is quoted rounded down.
+    nice = max(1, math.floor(window + 0.05)) if window and source != "RateLimit-Policy" else window
+    details.update(window=window, window_nice=nice, window_source=source, refill_accepted=f.refill_accepted)
     gradual = f.refill_hit_limit and f.refill_accepted is not None and f.refill_accepted < f.burst
     details["shape"] = "gradual" if gradual else "full" if f.refill_hit_limit else None
     if gradual:
@@ -170,9 +174,9 @@ def _observed(f):
                 f"and {secs(f.first_429.at + hi)} after the first request (found by backing off, as no "
                 "header said).")
     else:
-        text = (f"{plural(f.burst, 'request')}, then a wait until about {secs(window)} after the first "
+        text = (f"{plural(f.burst, 'request')}, then refused until {window:.1f} s after the first "
                 "request. Consistent with a fixed or sliding window")
-        text += f" of {f.burst} per {secs(window)}" if window else ""
+        text += f" of {f.burst} per {secs(nice)}" if window else ""
         confirm = []
         if f.policy_limit == f.burst:
             confirm.append(f"the Limit header ({f.policy_limit})")

@@ -169,8 +169,8 @@ def _healthy(report, facts):
         return None
     window = report.finding("limit.observed")
     rate = ""
-    if window and window.details.get("window"):
-        rate = f" and bursts above {facts.burst} per {secs(window.details['window'])}"
+    if window and window.details.get("window_nice"):
+        rate = f" and bursts above {facts.burst} per {secs(window.details['window_nice'])}"
     return Cause(
         "server-behaves", "the limit works as advertised",
         "The server's limit behaves as its headers say, and a client that honours them recovers, so the 429s "

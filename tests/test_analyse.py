@@ -25,6 +25,8 @@ def test_healthy_fixed_window():
     assert r.finding("limit.start").details == {"request": 6, "at": pytest.approx(0.5), "burst": 5}
     observed = r.finding("limit.observed")
     assert observed.details["shape"] == "full" and observed.details["window"] == pytest.approx(10.5)
+    assert observed.details["window_nice"] == 10
+    assert "refused until 10.5 s after the first request" in observed.summary and "5 per 10 s" in observed.summary
 
 
 def test_penalty():
@@ -111,3 +113,18 @@ def test_503_says_when_limiting_started():
 def test_lying_recovery_is_a_warning():
     f = report("lying").finding("behaviour.recovery")
     assert f.status == Status.WARN and "7th try" in f.summary
+
+
+def test_window_quoted_rounded_down_on_a_slightly_late_clock():
+    """On a real clock every sleep overruns a little, so the reset is seen just
+    past 10.5 s. The window must still read as 10 s, not 11."""
+    from rate_limit_probe.clock import FakeClock
+
+    class LateClock(FakeClock):
+        def sleep(self, seconds):
+            super().sleep(seconds + 0.004)
+
+    for name in ("lying", "penalty", "fixed-seconds"):
+        f = analyse(probe_scenario(name, clock=LateClock())).finding("limit.observed")
+        assert f.details["window"] > 10.5 and f.details["window_nice"] == 10, name
+        assert "5 per 10 s" in f.summary
