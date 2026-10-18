@@ -59,7 +59,7 @@ def one_line(report):
     observed = report.finding("limit.observed")
     d = observed.details if observed else {}
     if d.get("shape") == "gradual":
-        return Status.PASS, f"burst of {d['burst']}, refills gradually; headers consistent"
+        return Status.PASS, "bursts, then refills gradually; headers consistent"
     if d.get("window_nice"):
         return Status.PASS, f"{d['burst']} per {secs(d['window_nice'])}, headers consistent"
     return Status.PASS, cause.label if cause else "no problems found"
